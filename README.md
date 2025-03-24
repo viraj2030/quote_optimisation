@@ -1,6 +1,38 @@
-# Quote Optimisation Application
+# Quote Optimization Project
 
-This application helps optimize insurance quotes with a Flask backend and React frontend.
+This project consists of two main parts:
+
+## Frontend (React)
+Located in the `/frontend` directory
+- React application for the user interface
+- Deployed on Netlify at https://tourmaline-meringue-0ec52a.netlify.app/
+
+## Backend (Python/Flask)
+Located in the `/backend` directory
+- Flask API server
+- Deployed on Heroku at https://quote-optimization-api-2024-dc4246ae92b0.herokuapp.com/
+
+## Development
+
+### Frontend
+```bash
+cd frontend
+npm install
+npm start
+```
+
+### Backend
+```bash
+cd backend
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+pip install -r requirements.txt
+python app.py
+```
+
+## Deployment
+- Frontend is automatically deployed to Netlify when changes are pushed to the main branch
+- Backend is deployed to Heroku when changes are pushed to the main branch
 
 ## Setup Instructions
 
