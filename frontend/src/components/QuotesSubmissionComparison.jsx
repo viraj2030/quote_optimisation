@@ -84,18 +84,28 @@ const QuotesSubmissionComparison = () => {
     try {
       console.log("Fetching sublimits...");
       const response = await apiClient.get('/coverage-sublimits');
-      const sublimitsList = response.data.sublimits;
+      console.log("Raw response:", response);
       
+      const sublimitsList = response.data.sublimits;
       console.log("Received sublimits data:", sublimitsList);
       
-      if (Array.isArray(sublimitsList) && sublimitsList.length > 0) {
-        // Set the sublimits array with the correct format
+      if (Array.isArray(sublimitsList)) {
+        // Set the sublimits array
         setSublimits(sublimitsList);
         
         // Set first sublimit as default if available
         if (sublimitsList.length > 0) {
           console.log("Setting default sublimit:", sublimitsList[0].id);
           setSelectedSublimit(sublimitsList[0].id);
+        } else {
+          console.warn("Sublimits array is empty");
+          toast({
+            title: 'Warning',
+            description: 'No sublimits available',
+            status: 'warning',
+            duration: 5000,
+            isClosable: true,
+          });
         }
       } else {
         console.error('Invalid sublimits format:', response.data);
@@ -109,15 +119,22 @@ const QuotesSubmissionComparison = () => {
       }
     } catch (error) {
       console.error('Error fetching sublimits:', error);
-      console.error('Error details:', error.response ? {
-        status: error.response.status,
-        statusText: error.response.statusText,
-        data: error.response.data
-      } : 'No response details available');
+      console.error('Error details:', {
+        message: error.message,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        config: {
+          url: error.config?.url,
+          method: error.config?.method,
+          baseURL: error.config?.baseURL,
+          headers: error.config?.headers
+        }
+      });
       
       toast({
         title: 'Error',
-        description: 'Failed to fetch available sublimits',
+        description: `Failed to fetch sublimits: ${error.response?.data?.error || error.message}`,
         status: 'error',
         duration: 5000,
         isClosable: true,
