@@ -376,15 +376,11 @@ def get_sublimits_by_quote_id(quote_id):
         from coverage_analysis import load_data  # Import submission data
 
         file_path = os.path.join(
-            os.path.dirname(__file__), "notebooks", "adjusted_ml_ready_quotes.xlsx"
+            os.path.dirname(__file__), "data", "adjusted_ml_ready_quotes.xlsx"
         )
 
         if not os.path.exists(file_path):
-            # Try the absolute path if the relative path doesn't work
-            file_path = "/Users/virajvaghela/Documents/Repositories/Quote Optimisation/notebooks/adjusted_ml_ready_quotes.xlsx"
-
-            if not os.path.exists(file_path):
-                return jsonify({"error": "Sublimits data file not found"}), 500
+            return jsonify({"error": "Sublimits data file not found"}), 500
 
         try:
             # Load quote data from Excel
@@ -551,11 +547,11 @@ def calculate_coverage_scores():
         weights = data.get("weights", {})
 
         # Load the submission data from the correct file
-        submission_df = pd.read_csv("notebooks/Submission_ML-Ready_Format.csv")
+        submission_df = pd.read_csv("data/Submission_ML-Ready_Format.csv")
         submission = submission_df.iloc[0]  # Get the first row as submission
 
         # Load the quotes data
-        quotes_df = pd.read_excel("notebooks/adjusted_ml_ready_quotes.xlsx")
+        quotes_df = pd.read_excel("data/adjusted_ml_ready_quotes.xlsx")
 
         # Get all columns ending with _amount (these are our sublimits)
         sublimit_columns = [col for col in quotes_df.columns if col.endswith("_amount")]
@@ -669,7 +665,7 @@ def calculate_coverage_scores():
 def get_coverage_sublimits():
     try:
         # Load the Excel file with quotes data
-        quotes_df = pd.read_excel("notebooks/adjusted_ml_ready_quotes.xlsx")
+        quotes_df = pd.read_excel("data/adjusted_ml_ready_quotes.xlsx")
 
         # Get all columns ending with _amount
         sublimit_columns = [col for col in quotes_df.columns if col.endswith("_amount")]

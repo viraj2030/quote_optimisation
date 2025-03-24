@@ -44,38 +44,18 @@ def format_feature_name(feature: str) -> str:
 
 
 def load_data():
-    """
-    Load submission and quotes data from the data files.
-    Returns processed dataframes.
-    """
-    global _submission_df, _quotes_df
+    """Load submission and quotes data"""
+    try:
+        # Load submission data
+        submission_df = pd.read_csv("data/Submission_ML-Ready_Format.csv")
 
-    # If data already loaded, return it
-    if _submission_df is not None and _quotes_df is not None:
-        return _submission_df, _quotes_df
+        # Load quotes data
+        quotes_df = pd.read_excel("data/adjusted_ml_ready_quotes.xlsx")
 
-    # Construct absolute paths
-    project_root = os.path.dirname(os.path.abspath(__file__))
-    submission_path = os.path.join(project_root, SUBMISSION_PATH)
-    quotes_path = os.path.join(project_root, QUOTES_PATH)
-
-    # Load data
-    submission_df = pd.read_csv(submission_path)
-    quotes_df = pd.read_excel(quotes_path)
-
-    # Basic preprocessing
-    submission_df.fillna(0, inplace=True)
-    quotes_df.fillna(0, inplace=True)
-
-    # Standardize column names
-    submission_df.columns = submission_df.columns.str.strip().str.lower()
-    quotes_df.columns = quotes_df.columns.str.strip().str.lower()
-
-    # Store in global variables for reuse
-    _submission_df = submission_df
-    _quotes_df = quotes_df
-
-    return submission_df, quotes_df
+        return submission_df, quotes_df
+    except Exception as e:
+        print(f"Error loading data: {str(e)}")
+        return None, None
 
 
 def preprocess_data():
