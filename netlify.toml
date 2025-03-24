@@ -1,7 +1,12 @@
 [build]
   base = "frontend"
-  command = "npm run build"
+  command = "CI= npm run build"
   publish = "build"
+
+[build.environment]
+  NODE_VERSION = "20"
+  NPM_VERSION = "10"
+  PYTHON_VERSION = "false"
 
 [[redirects]]
   from = "/*"

@@ -351,28 +351,23 @@ def get_quotes_comparison():
             quote_value = float(row[quotes_col]) if not pd.isna(row[quotes_col]) else 0
             comparison_data.append(
                 {
-                    "quote": idx,
+                    "id": idx + 1,
                     "carrier": row.get("carrier", f"Quote {idx + 1}"),
-                    "quoteValue": quote_value,
-                    "submissionValue": submission_value,
-                    "difference": quote_value - submission_value,
-                    "percentageDifference": (
-                        (quote_value - submission_value) / submission_value * 100
-                    )
-                    if submission_value != 0
-                    else 0,
+                    "value": quote_value,
                 }
             )
 
         # Sort by absolute difference
-        comparison_data.sort(key=lambda x: abs(x["difference"]), reverse=True)
+        comparison_data.sort(
+            key=lambda x: abs(x["value"] - submission_value), reverse=True
+        )
 
         return jsonify(
             {
                 "formattedName": sublimit.replace("_", " ").title(),
                 "sublimit": sublimit,
                 "submission": submission_value,
-                "comparison": comparison_data,
+                "quotes": comparison_data,
             }
         )
     except Exception as e:
