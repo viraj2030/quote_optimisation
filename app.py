@@ -354,32 +354,40 @@ def get_coverage_analysis_sublimits():
 def get_sublimits_by_quote_id(quote_id):
     """Return sublimits for a specific quote ID with submission values for comparison"""
     try:
+        print(f"Processing request for quote_id: {quote_id}")
+
         # Get quotes data from the optimizer.py file
         df_quotes = get_quote_data()
+        print(f"Loaded quotes data, shape: {df_quotes.shape}")
 
         # Find the quote with the matching QuoteID (assign QuoteIDs if not present)
         df_quotes["QuoteID"] = [f"Quote {i + 1}" for i in range(len(df_quotes))]
         matched_quotes = df_quotes[df_quotes["QuoteID"] == quote_id]
+        print(f"Found {len(matched_quotes)} matching quotes")
 
         if len(matched_quotes) == 0:
             return jsonify({"error": f"Quote with ID '{quote_id}' not found"}), 404
 
         quote = matched_quotes.iloc[0].to_dict()
+        print(f"Quote details: {quote}")
 
         # Extract carrier and layer info for matching with Excel data
         carrier_name = quote.get("Carrier")
         layer_info = quote.get("Layer")
 
-        # Load the Excel file with sublimits data
-        import pandas as pd
-        import os
-        from coverage_analysis import load_data  # Import submission data
+        try:
+            # Load quote data from Excel
+            print("Loading adjusted_ml_ready_quotes.xlsx...")
+            df = pd.read_excel("data/adjusted_ml_ready_quotes.xlsx")
+            print(f"Loaded quotes Excel file, shape: {df.shape}")
 
-        # Load quote data from Excel
-        df = pd.read_excel("data/adjusted_ml_ready_quotes.xlsx")
-
-        # Load submission data for comparison
-        submission_df = pd.read_csv("data/Submission_ML-Ready_Format.csv")
+            # Load submission data for comparison
+            print("Loading Submission_ML-Ready_Format.csv...")
+            submission_df = pd.read_csv("data/Submission_ML-Ready_Format.csv")
+            print(f"Loaded submission CSV file, shape: {submission_df.shape}")
+        except Exception as e:
+            print(f"Error reading data files: {str(e)}")
+            return jsonify({"error": f"Failed to read data files: {str(e)}"}), 500
 
         # Initialize an empty list for sublimits
         sublimits = []
@@ -402,11 +410,14 @@ def get_sublimits_by_quote_id(quote_id):
 
         # Find matching rows in the Excel data
         matching_rows = []
+        print(f"Looking for rows matching carrier: {carrier_name}, layer: {layer_info}")
         for idx, row in df.iterrows():
             if match_carrier_and_layer(row["carrier"], row):
                 matching_rows.append(row)
+                print(f"Found matching row at index {idx}")
 
         if not matching_rows:
+            print("No matching rows found in Excel data")
             return jsonify({"error": "No matching sublimits found for this quote"}), 404
 
         # Get the first matching row
@@ -414,14 +425,17 @@ def get_sublimits_by_quote_id(quote_id):
 
         # Extract all columns that contain sublimit information (ending with _amount)
         sublimit_columns = [col for col in df.columns if col.endswith("_amount")]
+        print(f"Found {len(sublimit_columns)} sublimit columns")
 
         # Get all submission sublimit columns
         submission_sublimit_columns = [
             col for col in submission_df.columns if col.endswith("_amount")
         ]
+        print(f"Found {len(submission_sublimit_columns)} submission sublimit columns")
 
         # Process all submission sublimits
         for col in submission_sublimit_columns:
+            print(f"Processing sublimit column: {col}")
             # Get the base name without _amount
             base_name = col[:-7]  # Remove _amount
 
@@ -433,9 +447,11 @@ def get_sublimits_by_quote_id(quote_id):
                     if not pd.isna(submission_df[col].iloc[0])
                     else None
                 )
+                print(f"Submission value for {col}: {submission_value}")
 
             # Skip if submission value is None or 0
             if submission_value is None or submission_value == 0:
+                print(f"Skipping {col} - no submission value")
                 continue
 
             # Check if corresponding coverage and basis columns exist
@@ -446,6 +462,7 @@ def get_sublimits_by_quote_id(quote_id):
             amount = None
             if col in row.index:  # Check if the column exists in the quote
                 amount = row[col] if not pd.isna(row[col]) else None
+                print(f"Quote value for {col}: {amount}")
 
             # Get coverage and basis if they exist
             coverage = (
@@ -483,6 +500,7 @@ def get_sublimits_by_quote_id(quote_id):
 
         # Sort sublimits by absolute difference if available
         if sublimits:
+            print(f"Found {len(sublimits)} sublimits with data")
             # First, filter out entries with None difference
             sorted_sublimits = [s for s in sublimits if s["difference"] is not None]
             # Sort by absolute difference
@@ -490,6 +508,8 @@ def get_sublimits_by_quote_id(quote_id):
             # Append entries with None difference
             sorted_sublimits.extend([s for s in sublimits if s["difference"] is None])
             sublimits = sorted_sublimits
+        else:
+            print("No sublimits found with data")
 
         return jsonify(
             {
@@ -506,6 +526,9 @@ def get_sublimits_by_quote_id(quote_id):
         )
     except Exception as e:
         print(f"Error in getting sublimits by quote ID: {str(e)}")
+        import traceback
+
+        traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
 
