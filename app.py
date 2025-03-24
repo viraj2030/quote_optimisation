@@ -304,24 +304,68 @@ def get_quotes_comparison():
         if not sublimit:
             return jsonify({"error": "Sublimit parameter is required"}), 400
 
-        df_quotes = get_quote_data()
-        if sublimit not in df_quotes.columns:
+        print(f"Processing quotes comparison for sublimit: {sublimit}")
+
+        # Load quotes data from Excel
+        try:
+            df_quotes = pd.read_excel("data/adjusted_ml_ready_quotes.xlsx")
+            submission_df = pd.read_csv("data/Submission_ML-Ready_Format.csv")
+            print(f"Loaded quotes data, shape: {df_quotes.shape}")
+            print(f"Loaded submission data, shape: {submission_df.shape}")
+            print(f"Quotes columns: {list(df_quotes.columns)}")
+            print(f"Submission columns: {list(submission_df.columns)}")
+        except Exception as e:
+            print(f"Error reading data files: {str(e)}")
+            return jsonify({"error": f"Failed to read data files: {str(e)}"}), 500
+
+        # Create case-insensitive column mappings
+        quotes_cols_lower = {col.lower(): col for col in df_quotes.columns}
+        submission_cols_lower = {col.lower(): col for col in submission_df.columns}
+
+        # Try to find the sublimit in quotes data
+        sublimit_lower = sublimit.lower()
+        if sublimit_lower not in quotes_cols_lower:
+            print(f"Sublimit {sublimit} not found in quotes data")
             return jsonify({"error": f"Invalid sublimit: {sublimit}"}), 400
 
-        # Get the submission value (assuming it's in the first row)
-        submission_value = float(df_quotes[sublimit].iloc[0])
+        quotes_col = quotes_cols_lower[sublimit_lower]
+        print(f"Found quotes column: {quotes_col}")
+
+        # Find matching column in submission data
+        if sublimit_lower not in submission_cols_lower:
+            print(f"Sublimit {sublimit} not found in submission data")
+            return jsonify(
+                {"error": f"Sublimit not found in submission data: {sublimit}"}
+            ), 400
+
+        submission_col = submission_cols_lower[sublimit_lower]
+        print(f"Found submission column: {submission_col}")
+
+        # Get the submission value
+        submission_value = float(submission_df[submission_col].iloc[0])
+        print(f"Found submission value: {submission_value}")
 
         # Prepare comparison data
         comparison_data = []
         for idx, row in df_quotes.iterrows():
+            quote_value = float(row[quotes_col]) if not pd.isna(row[quotes_col]) else 0
             comparison_data.append(
                 {
                     "quote": idx,
                     "carrier": row.get("carrier", f"Quote {idx + 1}"),
-                    "quoteValue": float(row[sublimit]),
+                    "quoteValue": quote_value,
                     "submissionValue": submission_value,
+                    "difference": quote_value - submission_value,
+                    "percentageDifference": (
+                        (quote_value - submission_value) / submission_value * 100
+                    )
+                    if submission_value != 0
+                    else 0,
                 }
             )
+
+        # Sort by absolute difference
+        comparison_data.sort(key=lambda x: abs(x["difference"]), reverse=True)
 
         return jsonify(
             {
@@ -333,6 +377,7 @@ def get_quotes_comparison():
         )
     except Exception as e:
         print(f"Error generating comparison: {str(e)}")
+        traceback.print_exc()
         return jsonify({"error": "Failed to generate comparison"}), 500
 
 
