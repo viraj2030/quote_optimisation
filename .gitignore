@@ -34,4 +34,7 @@ frontend/node_modules/.cache/
 
 # OS
 .DS_Store
-Thumbs.db 
+Thumbs.db
+
+# Local Netlify folder
+.netlify
