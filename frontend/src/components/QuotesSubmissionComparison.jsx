@@ -69,11 +69,13 @@ const QuotesSubmissionComparison = () => {
   
   // Fetch available sublimits when component mounts
   useEffect(() => {
+    console.log('Component mounted, fetching sublimits...');
     fetchSublimits();
   }, []);
   
   // Fetch comparison data when selected sublimit changes
   useEffect(() => {
+    console.log('Selected sublimit changed:', selectedSublimit);
     if (selectedSublimit) {
       fetchComparisonData(selectedSublimit);
     }
@@ -82,20 +84,25 @@ const QuotesSubmissionComparison = () => {
   // Fetch available sublimits from API
   const fetchSublimits = async () => {
     try {
-      console.log("Fetching sublimits...");
+      console.log("Starting sublimits fetch...");
+      setLoadingComparison(true);
+      
       const response = await apiClient.get('/coverage-sublimits');
-      console.log("Raw response:", response);
+      console.log("Raw sublimits response:", response);
+      
+      if (!response.data) {
+        throw new Error('No data received from server');
+      }
       
       const sublimitsList = response.data.sublimits;
-      console.log("Received sublimits data:", sublimitsList);
+      console.log("Parsed sublimits list:", sublimitsList);
       
       if (Array.isArray(sublimitsList)) {
-        // Set the sublimits array
+        console.log(`Found ${sublimitsList.length} sublimits`);
         setSublimits(sublimitsList);
         
-        // Set first sublimit as default if available
         if (sublimitsList.length > 0) {
-          console.log("Setting default sublimit:", sublimitsList[0].id);
+          console.log("Setting default sublimit to:", sublimitsList[0].id);
           setSelectedSublimit(sublimitsList[0].id);
         } else {
           console.warn("Sublimits array is empty");
@@ -139,8 +146,20 @@ const QuotesSubmissionComparison = () => {
         duration: 5000,
         isClosable: true,
       });
+      setSublimits([]); // Ensure sublimits is at least an empty array
+    } finally {
+      setLoadingComparison(false);
     }
   };
+  
+  // Log sublimits state changes
+  useEffect(() => {
+    console.log('Sublimits state updated:', {
+      sublimitsLength: sublimits.length,
+      firstSublimit: sublimits[0],
+      isSelectDisabled: sublimits.length === 0
+    });
+  }, [sublimits]);
   
   // Fetch comparison data from API
   const fetchComparisonData = async (sublimit) => {
