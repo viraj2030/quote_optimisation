@@ -101,18 +101,18 @@ const QuotesSubmissionComparison = () => {
       setError(null);
       
       const response = await apiClient.get('/coverage-sublimits');
-      console.log("Raw sublimits response:", response);
+      console.log("Raw sublimits response:", response.data);
       
-      if (!response.data || !response.data.sublimits) {
+      if (!response.data || !Array.isArray(response.data.sublimits)) {
         throw new Error('Invalid response format: missing sublimits data');
       }
       
-      const sublimitsList = response.data.sublimits;
-      console.log("Parsed sublimits list:", sublimitsList);
+      const sublimitsList = response.data.sublimits.map(s => ({
+        id: s.id,
+        name: s.name
+      }));
       
-      if (!Array.isArray(sublimitsList)) {
-        throw new Error('Invalid sublimits format: expected an array');
-      }
+      console.log("Parsed sublimits list:", sublimitsList);
       
       if (sublimitsList.length === 0) {
         throw new Error('No sublimits available');
@@ -161,7 +161,7 @@ const QuotesSubmissionComparison = () => {
         params: { sublimit }
       });
       
-      console.log('Comparison data response:', response.data);
+      console.log('Raw comparison data response:', response.data);
       
       if (!response.data) {
         throw new Error('No comparison data received from server');
@@ -173,10 +173,16 @@ const QuotesSubmissionComparison = () => {
       
       // Transform the data to match the expected format
       const transformedData = {
-        ...response.data,
-        quotes: response.data.comparison.sort((a, b) => b.percentageDifference - a.percentageDifference)
+        submission: response.data.submission_value,
+        quotes: response.data.quotes.map(quote => ({
+          carrier: quote.carrier,
+          quoteValue: quote.amount,
+          difference: quote.difference,
+          percentageDifference: quote.percentage_difference
+        })).sort((a, b) => b.percentageDifference - a.percentageDifference)
       };
       
+      console.log('Transformed comparison data:', transformedData);
       setComparisonData(transformedData);
     } catch (error) {
       console.error('Error fetching comparison data:', error);

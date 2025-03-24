@@ -56,119 +56,51 @@ const SublimitsView = ({ embedded = false, initialQuoteId = null }) => {
   const negativeColorBg = useColorModeValue('red.100', 'red.900');
   const negativeColorText = useColorModeValue('red.600', 'red.200');
   
+  const toast = useToast();
+  
   // Fetch available quotes for filter options
   useEffect(() => {
     const fetchQuotes = async () => {
       setLoading(true);
       try {
         const response = await apiClient.get('/quotes');
-        if (!response.ok) {
-          throw new Error('Failed to fetch quotes');
-        }
+        console.log("Raw quotes response:", response.data);
         
-        const data = await response.json();
-        console.log("Raw quotes response:", data);
-        
-        if (data && data.quotes && Array.isArray(data.quotes) && data.quotes.length > 0) {
-          console.log("Available quotes from API:", data.quotes);
-          setAvailableQuotes(data.quotes);
+        if (response.data && Array.isArray(response.data.quotes) && response.data.quotes.length > 0) {
+          console.log("Available quotes from API:", response.data.quotes);
+          setAvailableQuotes(response.data.quotes);
           
           // Set initial filter values based on the current quote
-          const currentQuote = data.quotes.find(q => q.QuoteID === selectedQuoteId);
+          const currentQuote = response.data.quotes.find(q => q.id === selectedQuoteId);
           if (currentQuote) {
-            setSelectedCarrier(currentQuote.Carrier);
-            setSelectedLayer(currentQuote.Layer);
+            setSelectedCarrier(currentQuote.carrier);
+            setSelectedLayer(currentQuote.layer);
           }
           
           // If embedded and no quote selected yet, default to the first one
-          if (embedded && !selectedQuoteId) {
-            setSelectedQuoteId(data.quotes[0].QuoteID);
+          if (embedded && !selectedQuoteId && response.data.quotes.length > 0) {
+            setSelectedQuoteId(response.data.quotes[0].id);
           }
         } else {
-          console.warn("No quotes returned from API or invalid format. Using mock data.");
-          // Use mock data on error - ensure all 30 quotes are included
-          const mockQuotes = Array.from({ length: 30 }, (_, i) => ({
-            QuoteID: `Quote ${i + 1}`,
-            Carrier: [
-              "AIG", "Allianz", "AXA", "Zurich", "Chubb", "Liberty", "Berkshire", "Travelers", 
-              "Munich Re", "Swiss Re", "Hannover Re", "SCOR", "Partner Re", "Renaissance Re", 
-              "Arch Capital", "Axis Capital", "AIG", "Endurance", "Aspen Re", "Validus", "Chubb", 
-              "Catlin", "Allied World", "Hiscox", "Amlin", "Beazley", "AXA", "Brit", "MS Amlin", 
-              "XL Catlin"
-            ][i],
-            Layer: i < 10 ? "Primary $10M" : (i < 20 ? "$10M xs $10M" : "$10M xs $20M"),
-            Premium: [
-              156690, 127020, 133680, 139980, 135870, 118710, 164370, 142350, 135900, 127620,
-              27540, 26310, 25680, 33690, 24330, 27570, 28650, 21690, 20190, 19110,
-              19050, 20040, 20940, 21510, 17370, 19920, 18180, 23820, 19920, 23280
-            ][i],
-            Capacity: [
-              2000000, 4000000, 3000000, 5000000, 4000000, 5000000, 6000000, 2000000, 1000000, 2000000,
-              2000000, 5000000, 4000000, 5000000, 3000000, 2000000, 3000000, 4000000, 5000000, 3000000,
-              3000000, 1000000, 4000000, 2000000, 4000000, 2000000, 1000000, 3000000, 3000000, 5000000
-            ][i],
-            CreditRating: [
-              "A", "A", "A", "B", "AA", "B", "A", "A", "A", "A",
-              "B", "A", "B", "A", "A", "AA", "A", "AA", "AA", "B",
-              "B", "AA", "AA", "B", "B", "B", "A", "B", "AA", "AA"
-            ][i],
-          }));
-          setAvailableQuotes(mockQuotes);
-          
-          // Set initial filter values if current quote ID exists in mock data
-          const currentQuote = mockQuotes.find(q => q.QuoteID === selectedQuoteId);
-          if (currentQuote) {
-            setSelectedCarrier(currentQuote.Carrier);
-            setSelectedLayer(currentQuote.Layer);
-          }
-          
-          // If embedded and no quote selected yet, default to the first one
-          if (embedded && !selectedQuoteId) {
-            setSelectedQuoteId(mockQuotes[0].QuoteID);
-          }
+          throw new Error('No quotes available or invalid response format');
         }
       } catch (error) {
         console.error('Error fetching quotes:', error);
-        // Use mock data on error with complete data for all 30 quotes
-        const mockQuotes = Array.from({ length: 30 }, (_, i) => ({
-          QuoteID: `Quote ${i + 1}`,
-          Carrier: [
-            "AIG", "Allianz", "AXA", "Zurich", "Chubb", "Liberty", "Berkshire", "Travelers", 
-            "Munich Re", "Swiss Re", "Hannover Re", "SCOR", "Partner Re", "Renaissance Re", 
-            "Arch Capital", "Axis Capital", "AIG", "Endurance", "Aspen Re", "Validus", "Chubb", 
-            "Catlin", "Allied World", "Hiscox", "Amlin", "Beazley", "AXA", "Brit", "MS Amlin", 
-            "XL Catlin"
-          ][i],
-          Layer: i < 10 ? "Primary $10M" : (i < 20 ? "$10M xs $10M" : "$10M xs $20M"),
-          Premium: [
-            156690, 127020, 133680, 139980, 135870, 118710, 164370, 142350, 135900, 127620,
-            27540, 26310, 25680, 33690, 24330, 27570, 28650, 21690, 20190, 19110,
-            19050, 20040, 20940, 21510, 17370, 19920, 18180, 23820, 19920, 23280
-          ][i],
-          Capacity: [
-            2000000, 4000000, 3000000, 5000000, 4000000, 5000000, 6000000, 2000000, 1000000, 2000000,
-            2000000, 5000000, 4000000, 5000000, 3000000, 2000000, 3000000, 4000000, 5000000, 3000000,
-            3000000, 1000000, 4000000, 2000000, 4000000, 2000000, 1000000, 3000000, 3000000, 5000000
-          ][i],
-          CreditRating: [
-            "A", "A", "A", "B", "AA", "B", "A", "A", "A", "A",
-            "B", "A", "B", "A", "A", "AA", "A", "AA", "AA", "B",
-            "B", "AA", "AA", "B", "B", "B", "A", "B", "AA", "AA"
-          ][i],
-        }));
-        setAvailableQuotes(mockQuotes);
-        
-        // If embedded and no quote selected yet, default to the first one
-        if (embedded && !selectedQuoteId) {
-          setSelectedQuoteId(mockQuotes[0].QuoteID);
-        }
+        setError(error.message || 'Failed to fetch quotes');
+        toast({
+          title: 'Error',
+          description: error.message || 'Failed to fetch quotes',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
       } finally {
         setLoading(false);
       }
     };
     
     fetchQuotes();
-  }, [selectedQuoteId, embedded]);
+  }, [selectedQuoteId, embedded, toast]);
   
   // Reset selectedQuoteId when initialQuoteId prop changes
   useEffect(() => {
@@ -271,7 +203,7 @@ const SublimitsView = ({ embedded = false, initialQuoteId = null }) => {
   
   // Create option text for select dropdown
   const getQuoteOptionText = (quote) => {
-    return `${quote.Carrier} - ${quote.Layer}`;
+    return `${quote.carrier} - ${quote.layer}`;
   };
   
   if (loading && !sublimitsData) {
@@ -316,7 +248,7 @@ const SublimitsView = ({ embedded = false, initialQuoteId = null }) => {
           w={{ base: "100%", md: "400px" }}
         >
           {availableQuotes.map(quote => (
-            <option key={quote.QuoteID} value={quote.QuoteID}>
+            <option key={quote.id} value={quote.id}>
               {getQuoteOptionText(quote)}
             </option>
           ))}
