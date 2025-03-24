@@ -542,11 +542,9 @@ const CoverageScoreConfig = () => {
             >
               <Thead position="sticky" top="0" zIndex="1">
                 <Tr borderBottom="1px" borderColor="gray.200" bg="#EEF6F7">
-                  <Th width="22%" color="gray.600" fontWeight="500" padding="14px 16px" fontSize="15px">Carrier</Th>
-                  <Th width="18%" color="gray.600" fontWeight="500" padding="14px 16px" fontSize="15px">Layer</Th>
-                  <Th width="20%" isNumeric color="gray.600" fontWeight="500" padding="14px 16px" fontSize="15px">Premium</Th>
-                  <Th width="20%" isNumeric color="gray.600" fontWeight="500" padding="14px 16px" fontSize="15px">Coverage Score</Th>
-                  <Th width="20%" isNumeric color="gray.600" fontWeight="500" padding="14px 16px" fontSize="15px">Value Rating</Th>
+                  <Th width="30%" color="gray.600" fontWeight="500" padding="14px 16px" fontSize="15px">Carrier</Th>
+                  <Th width="35%" isNumeric color="gray.600" fontWeight="500" padding="14px 16px" fontSize="15px">Premium</Th>
+                  <Th width="35%" isNumeric color="gray.600" fontWeight="500" padding="14px 16px" fontSize="15px">Coverage Score</Th>
                 </Tr>
               </Thead>
               <Tbody>
@@ -559,7 +557,6 @@ const CoverageScoreConfig = () => {
                     bg={idx % 2 === 0 ? "white" : "#F9FCFC"}
                   >
                     <Td padding="14px 16px" fontWeight="500" fontSize="15px" verticalAlign="middle">{score.carrier}</Td>
-                    <Td padding="14px 16px" fontSize="15px" verticalAlign="middle">{score.layer}</Td>
                     <Td isNumeric padding="14px 16px" fontSize="15px" verticalAlign="middle">${score.premium?.toLocaleString()}</Td>
                     <Td isNumeric padding="14px 16px" fontSize="15px" verticalAlign="middle">
                       <Flex justify="flex-end">
@@ -581,14 +578,6 @@ const CoverageScoreConfig = () => {
                           {score.coverage_score?.toFixed(1)}%
                         </Badge>
                       </Flex>
-                    </Td>
-                    <Td isNumeric padding="14px 16px" fontSize="15px" verticalAlign="middle">
-                      <Text
-                        color={score.value_rating > 1 ? "green.600" : score.value_rating < 1 ? "red.600" : "gray.600"} 
-                        fontWeight={score.value_rating > 1 ? "semibold" : "normal"}
-                      >
-                        {score.value_rating > 1 ? "+" : score.value_rating < 1 ? "-" : ""}{Math.abs((score.value_rating - 1) * 100).toFixed(1)}%
-                      </Text>
                     </Td>
                   </Tr>
                 ))}
