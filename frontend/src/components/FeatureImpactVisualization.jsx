@@ -13,7 +13,7 @@ import {
 import axios from 'axios';
 
 // Constants
-const API_BASE_URL = 'http://localhost:5001/api';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
 
 // Aon colors for impact bar gradient
 const AON_DARK_BLUE = "#007585"; // Darkest (highest impact)

@@ -28,9 +28,10 @@ import {
   Divider,
   useColorModeValue,
   TableContainer,
+  useToast,
 } from '@chakra-ui/react';
 import { ArrowBackIcon, ArrowUpDownIcon } from '@chakra-ui/icons';
-import { fetchSublimitsForQuote } from '../api';
+import apiClient from '../services/apiClient';
 
 const SublimitsView = ({ embedded = false, initialQuoteId = null }) => {
   // Get quoteId from URL params if not embedded
@@ -60,7 +61,7 @@ const SublimitsView = ({ embedded = false, initialQuoteId = null }) => {
     const fetchQuotes = async () => {
       setLoading(true);
       try {
-        const response = await fetch('/api/quotes');
+        const response = await apiClient.get('/quotes');
         if (!response.ok) {
           throw new Error('Failed to fetch quotes');
         }
@@ -184,7 +185,7 @@ const SublimitsView = ({ embedded = false, initialQuoteId = null }) => {
       setLoading(true);
       setError(null);
       try {
-        const data = await fetchSublimitsForQuote(selectedQuoteId);
+        const data = await apiClient.get(`/sublimits/${selectedQuoteId}`);
         console.log('Sublimits data:', data);
         setSublimitsData(data);
       } catch (err) {

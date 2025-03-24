@@ -14,7 +14,16 @@ const apiClient = axios.create({
 apiClient.interceptors.response.use(
   response => response,
   error => {
-    console.error('API request failed:', error.message);
+    console.error('API request failed:', {
+      message: error.message,
+      status: error.response?.status,
+      data: error.response?.data,
+      config: {
+        url: error.config?.url,
+        method: error.config?.method,
+        baseURL: error.config?.baseURL
+      }
+    });
     return Promise.reject(error);
   }
 );

@@ -88,10 +88,10 @@ const QuotesSubmissionComparison = () => {
   // Fetch comparison data when selected sublimit changes
   useEffect(() => {
     console.log('Selected sublimit changed:', selectedSublimit);
-    if (selectedSublimit && selectedSublimit !== 'sublimits' && !loadingSublimits) {
+    if (selectedSublimit) {
       fetchComparisonData(selectedSublimit);
     }
-  }, [selectedSublimit, loadingSublimits]);
+  }, [selectedSublimit]);
   
   // Fetch available sublimits from API
   const fetchSublimits = async () => {
@@ -99,7 +99,6 @@ const QuotesSubmissionComparison = () => {
       console.log("Starting sublimits fetch...");
       setLoadingSublimits(true);
       setError(null);
-      setSelectedSublimit(null);
       
       const response = await apiClient.get('/coverage-sublimits');
       console.log("Raw sublimits response:", response);
@@ -132,26 +131,11 @@ const QuotesSubmissionComparison = () => {
       
     } catch (error) {
       console.error('Error fetching sublimits:', error);
-      console.error('Error details:', {
-        message: error.message,
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-        data: error.response?.data,
-        config: error.config && {
-          url: error.config.url,
-          method: error.config.method,
-          baseURL: error.config.baseURL,
-          headers: error.config.headers
-        }
-      });
-      
-      setSublimits([]);
-      setSelectedSublimit(null);
-      setError(error.message);
+      setError(error.customMessage || error.message);
       
       toast({
         title: 'Error',
-        description: `Failed to fetch sublimits: ${error.response?.data?.error || error.message}`,
+        description: error.customMessage || 'Failed to fetch sublimits',
         status: 'error',
         duration: 5000,
         isClosable: true,
@@ -187,28 +171,21 @@ const QuotesSubmissionComparison = () => {
         throw new Error(response.data.error);
       }
       
-      setComparisonData(response.data);
-    } catch (err) {
-      console.error('Error fetching comparison data:', err);
-      console.error('Error details:', {
-        message: err.message,
-        status: err.response?.status,
-        statusText: err.response?.statusText,
-        data: err.response?.data,
-        config: err.config && {
-          url: err.config.url,
-          method: err.config.method,
-          baseURL: err.config.baseURL,
-          headers: err.config.headers
-        }
-      });
+      // Transform the data to match the expected format
+      const transformedData = {
+        ...response.data,
+        quotes: response.data.comparison.sort((a, b) => b.percentageDifference - a.percentageDifference)
+      };
       
-      setError(err.message);
+      setComparisonData(transformedData);
+    } catch (error) {
+      console.error('Error fetching comparison data:', error);
+      setError(error.customMessage || error.message);
       setComparisonData(null);
       
       toast({
         title: 'Error',
-        description: err.response?.data?.error || err.message,
+        description: error.customMessage || 'Failed to fetch comparison data',
         status: 'error',
         duration: 5000,
         isClosable: true,
@@ -217,44 +194,12 @@ const QuotesSubmissionComparison = () => {
       setLoadingComparison(false);
     }
   };
-
+  
   // Handle sublimit selection change
-  const handleSublimitChange = async (event) => {
+  const handleSublimitChange = (event) => {
     const sublimitId = event.target.value;
+    console.log('Sublimit selection changed to:', sublimitId);
     setSelectedSublimit(sublimitId);
-    setLoadingComparison(true);
-    setError(null);
-
-    try {
-      console.log('Fetching comparison data for sublimit:', sublimitId);
-      const response = await apiClient.get('/coverage-analysis/quotes-comparison', {
-        params: { sublimit: encodeURIComponent(sublimitId) }
-      });
-      console.log('Received comparison data:', response.data);
-      
-      if (response.data && response.data.comparison) {
-        // Sort the comparison data by percentage difference
-        const sortedData = {
-          ...response.data,
-          quotes: response.data.comparison.sort((a, b) => b.percentageDifference - a.percentageDifference)
-        };
-        setComparisonData(sortedData);
-      } else {
-        setError('Invalid response format from server');
-      }
-    } catch (err) {
-      console.error('Error fetching comparison data:', err);
-      setError(err.response?.data?.error || 'Failed to fetch comparison data');
-      toast({
-        title: 'Error',
-        description: err.response?.data?.error || 'Failed to fetch comparison data',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
-    } finally {
-      setLoadingComparison(false);
-    }
   };
   
   // Prepare chart data for comparison visualization
