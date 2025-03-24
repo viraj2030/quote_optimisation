@@ -57,7 +57,7 @@ const QuotesSubmissionComparison = () => {
   
   // State variables for Quotes vs Submission tab
   const [sublimits, setSublimits] = useState([]);
-  const [selectedSublimit, setSelectedSublimit] = useState('');
+  const [selectedSublimit, setSelectedSublimit] = useState(null);
   const [comparisonData, setComparisonData] = useState(null);
   const [loadingComparison, setLoadingComparison] = useState(false);
   const [loadingSublimits, setLoadingSublimits] = useState(true);
@@ -68,6 +68,17 @@ const QuotesSubmissionComparison = () => {
   const subtleTextColor = useColorModeValue('#666666', 'gray.400');
   const toast = useToast();
   
+  // Debug logging for component state
+  useEffect(() => {
+    console.log('Component State:', {
+      sublimitsCount: sublimits.length,
+      selectedSublimit,
+      loadingSublimits,
+      loadingComparison,
+      error
+    });
+  }, [sublimits, selectedSublimit, loadingSublimits, loadingComparison, error]);
+  
   // Fetch available sublimits when component mounts
   useEffect(() => {
     console.log('Component mounted, fetching sublimits...');
@@ -77,10 +88,10 @@ const QuotesSubmissionComparison = () => {
   // Fetch comparison data when selected sublimit changes
   useEffect(() => {
     console.log('Selected sublimit changed:', selectedSublimit);
-    if (selectedSublimit && selectedSublimit !== 'sublimits') {
+    if (selectedSublimit && selectedSublimit !== 'sublimits' && !loadingSublimits) {
       fetchComparisonData(selectedSublimit);
     }
-  }, [selectedSublimit]);
+  }, [selectedSublimit, loadingSublimits]);
   
   // Fetch available sublimits from API
   const fetchSublimits = async () => {
@@ -88,6 +99,7 @@ const QuotesSubmissionComparison = () => {
       console.log("Starting sublimits fetch...");
       setLoadingSublimits(true);
       setError(null);
+      setSelectedSublimit(null);
       
       const response = await apiClient.get('/coverage-sublimits');
       console.log("Raw sublimits response:", response);
@@ -99,29 +111,25 @@ const QuotesSubmissionComparison = () => {
       const sublimitsList = response.data.sublimits;
       console.log("Parsed sublimits list:", sublimitsList);
       
-      if (Array.isArray(sublimitsList)) {
-        console.log(`Found ${sublimitsList.length} sublimits`);
-        setSublimits(sublimitsList);
-        
-        if (sublimitsList.length > 0) {
-          console.log("Setting default sublimit to:", sublimitsList[0].id);
-          // Delay setting the selected sublimit to avoid immediate comparison fetch
-          setTimeout(() => {
-            setSelectedSublimit(sublimitsList[0].id);
-          }, 100);
-        } else {
-          console.warn("Sublimits array is empty");
-          toast({
-            title: 'Warning',
-            description: 'No sublimits available',
-            status: 'warning',
-            duration: 5000,
-            isClosable: true,
-          });
-        }
-      } else {
+      if (!Array.isArray(sublimitsList)) {
         throw new Error('Invalid sublimits format received from server');
       }
+      
+      if (sublimitsList.length === 0) {
+        throw new Error('No sublimits available');
+      }
+      
+      console.log(`Found ${sublimitsList.length} sublimits`);
+      setSublimits(sublimitsList);
+      
+      // Set the first sublimit as default after a short delay
+      setTimeout(() => {
+        if (sublimitsList[0] && sublimitsList[0].id) {
+          console.log("Setting default sublimit to:", sublimitsList[0].id);
+          setSelectedSublimit(sublimitsList[0].id);
+        }
+      }, 500);
+      
     } catch (error) {
       console.error('Error fetching sublimits:', error);
       console.error('Error details:', {
@@ -129,13 +137,17 @@ const QuotesSubmissionComparison = () => {
         status: error.response?.status,
         statusText: error.response?.statusText,
         data: error.response?.data,
-        config: {
-          url: error.config?.url,
-          method: error.config?.method,
-          baseURL: error.config?.baseURL,
-          headers: error.config?.headers
+        config: error.config && {
+          url: error.config.url,
+          method: error.config.method,
+          baseURL: error.config.baseURL,
+          headers: error.config.headers
         }
       });
+      
+      setSublimits([]);
+      setSelectedSublimit(null);
+      setError(error.message);
       
       toast({
         title: 'Error',
@@ -144,50 +156,55 @@ const QuotesSubmissionComparison = () => {
         duration: 5000,
         isClosable: true,
       });
-      setSublimits([]); // Ensure sublimits is at least an empty array
-      setSelectedSublimit(''); // Reset selected sublimit
     } finally {
       setLoadingSublimits(false);
     }
   };
   
-  // Log sublimits state changes
-  useEffect(() => {
-    console.log('Sublimits state updated:', {
-      sublimitsLength: sublimits.length,
-      firstSublimit: sublimits[0],
-      isSelectDisabled: sublimits.length === 0
-    });
-  }, [sublimits]);
-  
   // Fetch comparison data from API
   const fetchComparisonData = async (sublimit) => {
+    if (!sublimit) {
+      console.warn('No sublimit provided to fetchComparisonData');
+      return;
+    }
+    
     try {
       setLoadingComparison(true);
+      setError(null);
       console.log('Fetching comparison data for sublimit:', sublimit);
       
-      // Send the full sublimit name without removing _amount
       const response = await apiClient.get('/coverage-analysis/quotes-comparison', {
-        params: { sublimit: sublimit }
+        params: { sublimit }
       });
       
       console.log('Comparison data response:', response.data);
+      
+      if (!response.data) {
+        throw new Error('No comparison data received from server');
+      }
+      
       setComparisonData(response.data);
-      setError(null);
     } catch (err) {
       console.error('Error fetching comparison data:', err);
-      console.error('Error details:', err.response ? {
-        status: err.response.status,
-        statusText: err.response.statusText,
-        data: err.response.data
-      } : 'No response details available');
+      console.error('Error details:', {
+        message: err.message,
+        status: err.response?.status,
+        statusText: err.response?.statusText,
+        data: err.response?.data,
+        config: err.config && {
+          url: err.config.url,
+          method: err.config.method,
+          baseURL: err.config.baseURL,
+          headers: err.config.headers
+        }
+      });
       
-      setError(err.response?.data?.error || 'Failed to fetch comparison data');
+      setError(err.message);
       setComparisonData(null);
       
       toast({
         title: 'Error',
-        description: err.response?.data?.error || 'Failed to fetch comparison data',
+        description: err.response?.data?.error || err.message,
         status: 'error',
         duration: 5000,
         isClosable: true,
@@ -195,6 +212,13 @@ const QuotesSubmissionComparison = () => {
     } finally {
       setLoadingComparison(false);
     }
+  };
+
+  // Handle sublimit selection change
+  const handleSublimitChange = (event) => {
+    const value = event.target.value;
+    console.log('Sublimit selection changed to:', value);
+    setSelectedSublimit(value);
   };
   
   // Prepare chart data for comparison visualization
@@ -349,7 +373,7 @@ const QuotesSubmissionComparison = () => {
         mb={5} 
         bg="white" 
         borderRadius="md" 
-        borderWidth="0px" 
+        borderWidth="1px" 
         borderColor="#CDDBDE"
         overflow="hidden"
         width="100%"
@@ -367,10 +391,12 @@ const QuotesSubmissionComparison = () => {
             <Flex justify="center" align="center" py={4}>
               <Spinner size="md" color="#0051A8" thickness="3px" />
             </Flex>
+          ) : error ? (
+            <Text color="red.500" fontSize="sm">{error}</Text>
           ) : (
             <Select
-              value={selectedSublimit}
-              onChange={(e) => setSelectedSublimit(e.target.value)}
+              value={selectedSublimit || ''}
+              onChange={handleSublimitChange}
               placeholder="Select sublimit"
               isDisabled={sublimits.length === 0}
               borderColor="gray.300"
