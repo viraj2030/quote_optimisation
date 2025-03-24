@@ -25,6 +25,7 @@ import { fetchQuotesComparisonData } from '../api';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip as ChartTooltip, Legend } from 'chart.js';
 import annotationPlugin from 'chartjs-plugin-annotation';
 import { Bar } from 'react-chartjs-2';
+import apiClient from '../services/apiClient';
 
 // Register ChartJS components
 ChartJS.register(
@@ -82,22 +83,19 @@ const QuotesSubmissionComparison = () => {
   const fetchSublimits = async () => {
     try {
       console.log("Fetching sublimits...");
-      const response = await fetchQuotesComparisonData('sublimits');
-      // The API returns an array of objects with value and label properties
-      const sublimitsList = response.data;
+      const response = await apiClient.get('/coverage-sublimits');
+      const sublimitsList = response.data.sublimits;
       
       console.log("Received sublimits data:", sublimitsList);
       
       if (Array.isArray(sublimitsList) && sublimitsList.length > 0) {
-        // Extract the values from the objects and set to state
-        const sublimitValues = sublimitsList.map(item => item.value);
-        console.log("Extracted sublimit values:", sublimitValues);
-        setSublimits(sublimitValues);
+        // Set the sublimits array with the correct format
+        setSublimits(sublimitsList);
         
         // Set first sublimit as default if available
-        if (sublimitValues.length > 0) {
-          console.log("Setting default sublimit:", sublimitValues[0]);
-          setSelectedSublimit(sublimitValues[0]);
+        if (sublimitsList.length > 0) {
+          console.log("Setting default sublimit:", sublimitsList[0].id);
+          setSelectedSublimit(sublimitsList[0].id);
         }
       } else {
         console.error('Invalid sublimits format:', response.data);
@@ -131,13 +129,34 @@ const QuotesSubmissionComparison = () => {
   const fetchComparisonData = async (sublimit) => {
     try {
       setLoadingComparison(true);
-      const data = await fetchQuotesComparisonData(sublimit);
-      setComparisonData(data);
+      console.log('Fetching comparison data for sublimit:', sublimit);
+      
+      // Send the full sublimit name without removing _amount
+      const response = await apiClient.get('/coverage-analysis/quotes-comparison', {
+        params: { sublimit: sublimit }
+      });
+      
+      console.log('Comparison data response:', response.data);
+      setComparisonData(response.data);
       setError(null);
     } catch (err) {
       console.error('Error fetching comparison data:', err);
-      setError('Failed to fetch comparison data');
+      console.error('Error details:', err.response ? {
+        status: err.response.status,
+        statusText: err.response.statusText,
+        data: err.response.data
+      } : 'No response details available');
+      
+      setError(err.response?.data?.error || 'Failed to fetch comparison data');
       setComparisonData(null);
+      
+      toast({
+        title: 'Error',
+        description: err.response?.data?.error || 'Failed to fetch comparison data',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
     } finally {
       setLoadingComparison(false);
     }
@@ -319,8 +338,8 @@ const QuotesSubmissionComparison = () => {
             _focus={{ borderColor: "#0051A8", boxShadow: "0 0 0 1px #0051A8" }}
           >
             {sublimits.map((sublimit) => (
-              <option key={sublimit} value={sublimit}>
-                {sublimit.replace(/_/g, ' ').replace('amount', '').trim()}
+              <option key={sublimit.id} value={sublimit.id}>
+                {sublimit.name}
               </option>
             ))}
           </Select>
