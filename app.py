@@ -423,46 +423,65 @@ def get_sublimits_by_quote_id(quote_id):
         # Get the first matching row
         row = matching_rows[0]
 
-        # Extract all columns that contain sublimit information (ending with _amount)
-        sublimit_columns = [col for col in df.columns if col.endswith("_amount")]
+        # Extract all columns that contain sublimit information (ending with _Amount or _amount)
+        sublimit_columns = [
+            col for col in df.columns if col.lower().endswith("_amount")
+        ]
         print(f"Found {len(sublimit_columns)} sublimit columns")
 
-        # Get all submission sublimit columns
+        # Get all submission sublimit columns (ending with _Amount or _amount)
         submission_sublimit_columns = [
-            col for col in submission_df.columns if col.endswith("_amount")
+            col for col in submission_df.columns if col.lower().endswith("_amount")
         ]
         print(f"Found {len(submission_sublimit_columns)} submission sublimit columns")
 
-        # Process all submission sublimits
-        for col in submission_sublimit_columns:
-            print(f"Processing sublimit column: {col}")
+        # Create a mapping between Excel and submission column names
+        column_mapping = {}
+        for excel_col in sublimit_columns:
+            excel_col_normalized = excel_col.lower()
+            for submission_col in submission_sublimit_columns:
+                submission_col_normalized = submission_col.lower()
+                if excel_col_normalized == submission_col_normalized:
+                    column_mapping[excel_col] = submission_col
+                    break
+
+        print(
+            f"Found {len(column_mapping)} matching columns between Excel and submission"
+        )
+
+        # Process all sublimits
+        for excel_col in sublimit_columns:
+            print(f"Processing sublimit column: {excel_col}")
             # Get the base name without _amount
-            base_name = col[:-7]  # Remove _amount
+            base_name = (
+                excel_col[:-7] if excel_col.lower().endswith("_amount") else excel_col
+            )  # Remove _amount
 
             # Get submission value
             submission_value = None
-            if col in submission_df.columns:
+            submission_col = column_mapping.get(excel_col)
+            if submission_col:
                 submission_value = (
-                    float(submission_df[col].iloc[0])
-                    if not pd.isna(submission_df[col].iloc[0])
+                    float(submission_df[submission_col].iloc[0])
+                    if not pd.isna(submission_df[submission_col].iloc[0])
                     else None
                 )
-                print(f"Submission value for {col}: {submission_value}")
+                print(f"Submission value for {submission_col}: {submission_value}")
 
             # Skip if submission value is None or 0
             if submission_value is None or submission_value == 0:
-                print(f"Skipping {col} - no submission value")
+                print(f"Skipping {excel_col} - no submission value")
                 continue
 
             # Check if corresponding coverage and basis columns exist
-            coverage_col = f"{base_name}_coverage"
-            basis_col = f"{base_name}_aggregatebasis"
+            coverage_col = f"{base_name}_Coverage"
+            basis_col = f"{base_name}_AggregateBasis"
 
             # Get quote value if it exists
             amount = None
-            if col in row.index:  # Check if the column exists in the quote
-                amount = row[col] if not pd.isna(row[col]) else None
-                print(f"Quote value for {col}: {amount}")
+            if excel_col in row.index:  # Check if the column exists in the quote
+                amount = row[excel_col] if not pd.isna(row[excel_col]) else None
+                print(f"Quote value for {excel_col}: {amount}")
 
             # Get coverage and basis if they exist
             coverage = (
