@@ -104,15 +104,15 @@ const QuotesSubmissionComparison = () => {
       const response = await apiClient.get('/coverage-sublimits');
       console.log("Raw sublimits response:", response);
       
-      if (!response.data) {
-        throw new Error('No data received from server');
+      if (!response.data || !response.data.sublimits) {
+        throw new Error('Invalid response format: missing sublimits data');
       }
       
       const sublimitsList = response.data.sublimits;
       console.log("Parsed sublimits list:", sublimitsList);
       
       if (!Array.isArray(sublimitsList)) {
-        throw new Error('Invalid sublimits format received from server');
+        throw new Error('Invalid sublimits format: expected an array');
       }
       
       if (sublimitsList.length === 0) {
@@ -183,6 +183,10 @@ const QuotesSubmissionComparison = () => {
         throw new Error('No comparison data received from server');
       }
       
+      if (response.data.error) {
+        throw new Error(response.data.error);
+      }
+      
       setComparisonData(response.data);
     } catch (err) {
       console.error('Error fetching comparison data:', err);
@@ -218,7 +222,9 @@ const QuotesSubmissionComparison = () => {
   const handleSublimitChange = (event) => {
     const value = event.target.value;
     console.log('Sublimit selection changed to:', value);
-    setSelectedSublimit(value);
+    if (value && value !== 'sublimits') {
+      setSelectedSublimit(value);
+    }
   };
   
   // Prepare chart data for comparison visualization
