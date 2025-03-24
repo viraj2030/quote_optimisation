@@ -6,4 +6,6 @@ pulp==2.7.0
 gunicorn==21.2.0
 python-dotenv==1.0.0
 Werkzeug==2.3.7
-openpyxl==3.1.2 
+openpyxl==3.1.2
+shap==0.44.1
+scikit-learn==1.4.1.post1 
