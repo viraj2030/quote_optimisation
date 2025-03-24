@@ -219,11 +219,41 @@ const QuotesSubmissionComparison = () => {
   };
 
   // Handle sublimit selection change
-  const handleSublimitChange = (event) => {
-    const value = event.target.value;
-    console.log('Sublimit selection changed to:', value);
-    if (value && value !== 'sublimits') {
-      setSelectedSublimit(value);
+  const handleSublimitChange = async (event) => {
+    const sublimitId = event.target.value;
+    setSelectedSublimit(sublimitId);
+    setLoadingComparison(true);
+    setError(null);
+
+    try {
+      console.log('Fetching comparison data for sublimit:', sublimitId);
+      const response = await apiClient.get('/coverage-analysis/quotes-comparison', {
+        params: { sublimit: encodeURIComponent(sublimitId) }
+      });
+      console.log('Received comparison data:', response.data);
+      
+      if (response.data && response.data.comparison) {
+        // Sort the comparison data by percentage difference
+        const sortedData = {
+          ...response.data,
+          quotes: response.data.comparison.sort((a, b) => b.percentageDifference - a.percentageDifference)
+        };
+        setComparisonData(sortedData);
+      } else {
+        setError('Invalid response format from server');
+      }
+    } catch (err) {
+      console.error('Error fetching comparison data:', err);
+      setError(err.response?.data?.error || 'Failed to fetch comparison data');
+      toast({
+        title: 'Error',
+        description: err.response?.data?.error || 'Failed to fetch comparison data',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    } finally {
+      setLoadingComparison(false);
     }
   };
   
@@ -233,29 +263,9 @@ const QuotesSubmissionComparison = () => {
       return null;
     }
     
-    const labels = comparisonData.quotes.map(q => q.carrier || `Quote ${q.id}`);
-    const quoteValues = comparisonData.quotes.map(q => q.value || 0);
-    const submissionValue = comparisonData.submission || 0; // Use dynamic submission value
-    
-    // Separate data into achieved and unachieved coverage
-    const achievedLabels = [];
-    const achievedValues = [];
-    const unachievedLabels = [];
-    const unachievedValues = [];
-    
-    quoteValues.forEach((value, index) => {
-      if (value >= submissionValue) {
-        achievedLabels.push(labels[index]);
-        achievedValues.push(value);
-        unachievedLabels.push(labels[index]);
-        unachievedValues.push(null); // null for this position in unachieved
-      } else {
-        unachievedLabels.push(labels[index]);
-        unachievedValues.push(value);
-        achievedLabels.push(labels[index]);
-        achievedValues.push(null); // null for this position in achieved
-      }
-    });
+    const labels = comparisonData.quotes.map(q => q.carrier || `Quote ${q.quote}`);
+    const quoteValues = comparisonData.quotes.map(q => q.quoteValue || 0);
+    const submissionValue = comparisonData.submission || 0;
     
     return {
       labels,
@@ -457,7 +467,7 @@ const QuotesSubmissionComparison = () => {
                 <Text fontSize="2xl" fontWeight="500" color={textColor}>
                   ${formatNumber(
                     comparisonData.quotes && comparisonData.quotes.length > 0
-                      ? comparisonData.quotes.reduce((acc, q) => acc + (q.value || 0), 0) / comparisonData.quotes.length
+                      ? comparisonData.quotes.reduce((acc, q) => acc + (q.quoteValue || 0), 0) / comparisonData.quotes.length
                       : 0
                   )}
                 </Text>
@@ -553,33 +563,38 @@ const QuotesSubmissionComparison = () => {
                         </Tr>
                       </Thead>
                       <Tbody>
-                        {comparisonData.quotes && comparisonData.quotes.map((quote, index) => (
-                          <Tr 
-                            key={index} 
-                            _hover={{ bg: "gray.50" }}
-                            borderBottom="1px" 
-                            borderColor="gray.200"
-                            bg={index % 2 === 0 ? "white" : "#F9FCFC"}
-                          >
-                            <Td fontWeight="500" padding="12px 16px" fontSize="15px">{quote.carrier || `Quote ${quote.id}`}</Td>
-                            <Td isNumeric padding="12px 16px" fontSize="15px">${formatNumber(quote.value || 0)}</Td>
-                            <Td isNumeric padding="12px 16px" fontSize="15px">${formatNumber(comparisonData.submission || 0)}</Td>
-                            <Td isNumeric padding="12px 16px" fontSize="15px">${formatNumber(Math.abs((quote.value || 0) - (comparisonData.submission || 0)))}</Td>
-                            <Td padding="12px 16px" fontSize="15px">
-                              <Box 
-                                px={2} py={0.5}
-                                borderRadius="full" 
-                                display="inline-block"
-                                bg={(quote.value || 0) >= (comparisonData.submission || 0) ? "green.100" : "red.100"}
-                                color={(quote.value || 0) >= (comparisonData.submission || 0) ? "green.700" : "red.700"}
-                                fontWeight="medium"
-                              >
-                                {(quote.value || 0) >= (comparisonData.submission || 0) ? "+" : "-"}
-                                {Math.abs(calculateDifference(quote.value || 0, comparisonData.submission || 0)).toFixed(2)}%
-                              </Box>
-                            </Td>
-                          </Tr>
-                        ))}
+                        {comparisonData.quotes && comparisonData.quotes.map((quote, index) => {
+                          const difference = quote.difference;
+                          const percentageDifference = quote.percentageDifference;
+                          
+                          return (
+                            <Tr 
+                              key={index} 
+                              _hover={{ bg: "gray.50" }}
+                              borderBottom="1px" 
+                              borderColor="gray.200"
+                              bg={index % 2 === 0 ? "white" : "#F9FCFC"}
+                            >
+                              <Td fontWeight="500" padding="12px 16px" fontSize="15px">{quote.carrier || `Quote ${quote.quote}`}</Td>
+                              <Td isNumeric padding="12px 16px" fontSize="15px">${formatNumber(quote.quoteValue || 0)}</Td>
+                              <Td isNumeric padding="12px 16px" fontSize="15px">${formatNumber(comparisonData.submission || 0)}</Td>
+                              <Td isNumeric padding="12px 16px" fontSize="15px">${formatNumber(Math.abs(difference))}</Td>
+                              <Td padding="12px 16px" fontSize="15px">
+                                <Box 
+                                  px={2} py={0.5}
+                                  borderRadius="full" 
+                                  display="inline-block"
+                                  bg={(quote.quoteValue || 0) >= (comparisonData.submission || 0) ? "green.100" : "red.100"}
+                                  color={(quote.quoteValue || 0) >= (comparisonData.submission || 0) ? "green.700" : "red.700"}
+                                  fontWeight="medium"
+                                >
+                                  {(quote.quoteValue || 0) >= (comparisonData.submission || 0) ? "+" : "-"}
+                                  {Math.abs(percentageDifference).toFixed(2)}%
+                                </Box>
+                              </Td>
+                            </Tr>
+                          );
+                        })}
                       </Tbody>
                     </Table>
                   </Box>
