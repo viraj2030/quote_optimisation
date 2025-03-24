@@ -14,8 +14,21 @@ from optimizer import (
 )
 
 app = Flask(__name__)
-# Enable CORS for all routes with all origins
-CORS(app, resources={r"/api/*": {"origins": "*"}})
+# Enable CORS for all routes with specific origins
+CORS(
+    app,
+    resources={
+        r"/api/*": {
+            "origins": [
+                "http://localhost:3000",
+                "https://tourmaline-meringue-0ec52a.netlify.app",
+                "https://*.netlify.app",
+            ],
+            "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+            "allow_headers": ["Content-Type", "Authorization"],
+        }
+    },
+)
 
 # Ensure Homebrew's bin is in the PATH so solvers can be found on macOS
 os.environ["PATH"] = "/opt/homebrew/bin:" + os.environ.get("PATH", "")
@@ -285,105 +298,56 @@ def coverage_analysis_features():
 
 @app.route("/api/coverage-analysis/quotes-comparison", methods=["GET"])
 def get_quotes_comparison():
-    """Return data for comparing quotes against submission values"""
+    """Return comparison data for quotes vs submission"""
     try:
-        # Get selected sublimit from query parameters
-        selected_sublimit = request.args.get("sublimit", "")
+        sublimit = request.args.get("sublimit")
+        if not sublimit:
+            return jsonify({"error": "Sublimit parameter is required"}), 400
 
-        # Format correction: Replace underscores with spaces EXCEPT for the _amount part
-        # Example: earthquake_in_high_hazard_earthquake_zones_amount -> earthquake in high hazard earthquake zones_amount
-        if "_amount" in selected_sublimit:
-            # Keep the _amount suffix intact
-            base_name = selected_sublimit.replace("_amount", "")
-            base_name_with_spaces = base_name.replace("_", " ")
-            selected_sublimit = f"{base_name_with_spaces}_amount"
-        else:
-            # Fallback just in case
-            selected_sublimit = selected_sublimit.replace("_", " ")
+        df_quotes = get_quote_data()
+        if sublimit not in df_quotes.columns:
+            return jsonify({"error": f"Invalid sublimit: {sublimit}"}), 400
 
-        print(f"Processing quotes comparison for sublimit: '{selected_sublimit}'")
+        # Get the submission value (assuming it's in the first row)
+        submission_value = float(df_quotes[sublimit].iloc[0])
 
-        # Import helper function from the coverage analysis module
-        from coverage_analysis import get_quotes_vs_submission, load_data
-
-        # Check if the column exists in the datasets before processing
-        submission_df, quotes_df = load_data()
-        if selected_sublimit not in submission_df.columns:
-            print(
-                f"Error: Sublimit '{selected_sublimit}' not found in submission dataset"
-            )
-            column_examples = list(submission_df.columns)[:5]
-            print(f"Example columns in submission: {column_examples}")
-            return jsonify(
+        # Prepare comparison data
+        comparison_data = []
+        for idx, row in df_quotes.iterrows():
+            comparison_data.append(
                 {
-                    "error": f"Sublimit '{selected_sublimit}' not found in submission dataset"
+                    "quote": idx,
+                    "carrier": row.get("carrier", f"Quote {idx + 1}"),
+                    "quoteValue": float(row[sublimit]),
+                    "submissionValue": submission_value,
                 }
-            ), 404
+            )
 
-        if selected_sublimit not in quotes_df.columns:
-            print(f"Error: Sublimit '{selected_sublimit}' not found in quotes dataset")
-            column_examples = list(quotes_df.columns)[:5]
-            print(f"Example columns in quotes: {column_examples}")
-            return jsonify(
-                {"error": f"Sublimit '{selected_sublimit}' not found in quotes dataset"}
-            ), 404
-
-        # Get comparison data
-        comparison_data = get_quotes_vs_submission(selected_sublimit)
-
-        return jsonify(comparison_data)
+        return jsonify(
+            {
+                "formattedName": sublimit.replace("_", " ").title(),
+                "sublimit": sublimit,
+                "submission": submission_value,
+                "comparison": comparison_data,
+            }
+        )
     except Exception as e:
-        print(f"Error in quotes comparison: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+        print(f"Error generating comparison: {str(e)}")
+        return jsonify({"error": "Failed to generate comparison"}), 500
 
 
 @app.route("/api/coverage-analysis/sublimits", methods=["GET"])
-def get_available_sublimits():
-    """Return list of available sublimits for the comparison view"""
+def get_coverage_analysis_sublimits():
+    """Return available sublimits for coverage analysis"""
     try:
-        # Import helper function from the coverage analysis module
-        from coverage_analysis import (
-            get_available_sublimits,
-            format_feature_name,
-            load_data,
-        )
-
-        # Get list of sublimits
-        sublimits = get_available_sublimits()
-
-        # Verify that all sublimits exist in both datasets
-        submission_df, quotes_df = load_data()
-        valid_sublimits = []
-        for sublimit in sublimits:
-            if sublimit in submission_df.columns and sublimit in quotes_df.columns:
-                valid_sublimits.append(sublimit)
-            else:
-                print(
-                    f"Warning: Skipping sublimit '{sublimit}' as it's not found in both datasets"
-                )
-
-        print(
-            f"Found {len(valid_sublimits)} valid sublimits out of {len(sublimits)} total"
-        )
-
-        # Format sublimits for display
-        formatted_sublimits = []
-        for sublimit in valid_sublimits:
-            # For API use, convert to URL-friendly format
-            # Example: "earthquake in high hazard earthquake zones_amount" -> "earthquake_in_high_hazard_earthquake_zones_amount"
-            if "_amount" in sublimit:
-                base_name = sublimit.replace("_amount", "")
-                url_value = base_name.replace(" ", "_") + "_amount"
-            else:
-                url_value = sublimit.replace(" ", "_")
-
-            label = format_feature_name(sublimit)
-            formatted_sublimits.append({"value": url_value, "label": label})
-
-        return jsonify(formatted_sublimits)
+        df_quotes = get_quote_data()
+        sublimits = df_quotes.columns[
+            df_quotes.columns.str.contains("sublimit", case=False)
+        ].tolist()
+        return jsonify({"sublimits": sublimits})
     except Exception as e:
-        print(f"Error in getting sublimits: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+        print(f"Error fetching sublimits: {str(e)}")
+        return jsonify({"error": "Failed to fetch sublimits"}), 500
 
 
 @app.route("/api/sublimits/<quote_id>", methods=["GET"])

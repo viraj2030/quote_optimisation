@@ -35,6 +35,7 @@ import {
 import axios from 'axios';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip as ChartTooltip, Legend } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
+import { fetchCoverageAnalysisSublimits, getFeatureImpact } from '../api';
 
 // Import components
 import FeatureImpactVisualization from './FeatureImpactVisualization';
@@ -54,6 +55,42 @@ ChartJS.register(
 const API_BASE_URL = 'http://localhost:5001/api';
 
 const CoverageAnalysis = () => {
+  const [sublimits, setSublimits] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [featureImpactData, setFeatureImpactData] = useState(null);
+  const [isLoadingFeatureImpact, setIsLoadingFeatureImpact] = useState(false);
+
+  const fetchSublimits = async () => {
+    try {
+      setIsLoading(true);
+      const data = await fetchCoverageAnalysisSublimits();
+      setSublimits(data.sublimits);
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching sublimits:', err);
+      setError('Failed to fetch sublimits');
+      setSublimits([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchFeatureImpact = async () => {
+    try {
+      setIsLoadingFeatureImpact(true);
+      const data = await getFeatureImpact();
+      setFeatureImpactData(data);
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching feature impact data:', err);
+      setError('Failed to fetch feature impact data');
+      setFeatureImpactData(null);
+    } finally {
+      setIsLoadingFeatureImpact(false);
+    }
+  };
+
   return (
     <Box p={4} bg="white" borderRadius="lg" boxShadow="sm">
       <Heading size="lg" mb={6}>Coverage Analysis</Heading>

@@ -192,7 +192,7 @@ export const checkApiHealth = async () => {
 // Function to get quotes with pagination and filtering
 export const getQuotes = async (page = 1, pageSize = 20, filters = {}) => {
   try {
-    const response = await axios.get(`${API_BASE_URL}/quotes`, {
+    const response = await apiClient.get('/quotes', {
       params: {
         page,
         page_size: pageSize,
@@ -209,51 +209,35 @@ export const getQuotes = async (page = 1, pageSize = 20, filters = {}) => {
 // Function to get feature impact data
 export const getFeatureImpact = async () => {
   try {
-    const response = await axios.get(`${API_BASE_URL}/feature-impact`);
+    const response = await apiClient.get('/feature-impact');
     return response.data;
   } catch (error) {
     console.error('Error fetching feature impact data:', error);
-    // Return fallback data if the API fails
-    return {
-      features: [
-        { name: 'Property Value', impact: 25000 },
-        { name: 'Location Risk', impact: 15000 },
-        { name: 'Claims History', impact: -8000 },
-        { name: 'Business Continuity Plan', impact: -5000 },
-        { name: 'Industry Type', impact: 12000 },
-        { name: 'Coverage Limits', impact: 18000 },
-        { name: 'Deductible', impact: -10000 },
-      ]
-    };
+    throw error;
   }
 };
 
 // Function to fetch coverage analysis sublimits
 export const fetchCoverageAnalysisSublimits = async () => {
   try {
-    const response = await axios.get(`${API_BASE_URL}/coverage-analysis/sublimits`);
+    const response = await apiClient.get('/coverage-analysis/sublimits');
     return response.data;
   } catch (error) {
     console.error('Error fetching coverage analysis sublimits:', error);
-    // Return fallback data
-    return {
-      sublimits: generateFallbackSublimitsList(),
-      count: 10
-    };
+    throw error;
   }
 };
 
 // Function to fetch quotes comparison data
 export const fetchQuotesComparisonData = async (sublimit) => {
   try {
-    const response = await axios.get(`${API_BASE_URL}/coverage-analysis/quotes-comparison`, {
+    const response = await apiClient.get('/coverage-analysis/quotes-comparison', {
       params: { sublimit }
     });
     return response.data;
   } catch (error) {
     console.error('Error fetching quotes comparison data:', error);
-    // Return fallback data based on sublimit type
-    return generateFallbackComparisonData(sublimit);
+    throw error;
   }
 };
 

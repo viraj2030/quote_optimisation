@@ -21,7 +21,7 @@ import {
   AccordionPanel,
   AccordionIcon,
 } from '@chakra-ui/react';
-import axios from 'axios';
+import { fetchQuotesComparisonData } from '../api';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip as ChartTooltip, Legend } from 'chart.js';
 import annotationPlugin from 'chartjs-plugin-annotation';
 import { Bar } from 'react-chartjs-2';
@@ -36,9 +36,6 @@ ChartJS.register(
   Legend,
   annotationPlugin
 );
-
-// Constants
-const API_BASE_URL = 'http://localhost:5001/api';
 
 // Aon theme colors
 const AON_BLUE = '#0051A8';
@@ -62,6 +59,7 @@ const QuotesSubmissionComparison = () => {
   const [selectedSublimit, setSelectedSublimit] = useState('');
   const [comparisonData, setComparisonData] = useState(null);
   const [loadingComparison, setLoadingComparison] = useState(false);
+  const [error, setError] = useState(null);
   
   // UI colors
   const textColor = useColorModeValue('#333333', 'white');
@@ -76,7 +74,7 @@ const QuotesSubmissionComparison = () => {
   // Fetch comparison data when selected sublimit changes
   useEffect(() => {
     if (selectedSublimit) {
-      fetchComparisonData();
+      fetchComparisonData(selectedSublimit);
     }
   }, [selectedSublimit]);
   
@@ -84,7 +82,7 @@ const QuotesSubmissionComparison = () => {
   const fetchSublimits = async () => {
     try {
       console.log("Fetching sublimits...");
-      const response = await axios.get(`${API_BASE_URL}/coverage-analysis/sublimits`);
+      const response = await fetchQuotesComparisonData('sublimits');
       // The API returns an array of objects with value and label properties
       const sublimitsList = response.data;
       
@@ -130,59 +128,15 @@ const QuotesSubmissionComparison = () => {
   };
   
   // Fetch comparison data from API
-  const fetchComparisonData = async () => {
-    if (!selectedSublimit) return;
-    
-    setLoadingComparison(true);
+  const fetchComparisonData = async (sublimit) => {
     try {
-      console.log(`Fetching comparison data for sublimit: ${selectedSublimit}`);
-      const response = await axios.get(`${API_BASE_URL}/coverage-analysis/quotes-comparison`, {
-        params: { sublimit: selectedSublimit }
-      });
-      
-      console.log("Received comparison data:", response.data);
-      
-      // Check for error in response
-      if (response.data.error) {
-        throw new Error(response.data.error);
-      }
-      
-      if (!response.data.comparison || !Array.isArray(response.data.comparison) || response.data.comparison.length === 0) {
-        console.warn("Received empty comparison data:", response.data);
-        throw new Error("No comparison data available");
-      }
-      
-      // Transform data into the format expected by the component
-      const transformedData = {
-        formattedName: response.data.formattedName,
-        sublimit: response.data.sublimit,
-        submission: response.data.comparison && response.data.comparison.length > 0 
-          ? response.data.comparison[0].submissionValue 
-          : 0,
-        quotes: (response.data.comparison || []).map(item => ({
-          id: item.quote,
-          carrier: item.carrier || `Quote ${item.quote + 1}`,
-          value: item.quoteValue || 0
-        }))
-      };
-      
-      console.log("Transformed data:", transformedData);
-      setComparisonData(transformedData);
-    } catch (error) {
-      console.error('Error fetching comparison data:', error);
-      console.error('Error details:', error.response ? {
-        status: error.response.status,
-        statusText: error.response.statusText,
-        data: error.response.data
-      } : 'No response details available');
-      
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to fetch quotes comparison data',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
+      setLoadingComparison(true);
+      const data = await fetchQuotesComparisonData(sublimit);
+      setComparisonData(data);
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching comparison data:', err);
+      setError('Failed to fetch comparison data');
       setComparisonData(null);
     } finally {
       setLoadingComparison(false);
