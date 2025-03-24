@@ -375,22 +375,11 @@ def get_sublimits_by_quote_id(quote_id):
         import os
         from coverage_analysis import load_data  # Import submission data
 
-        file_path = os.path.join(
-            os.path.dirname(__file__), "data", "adjusted_ml_ready_quotes.xlsx"
-        )
+        # Load quote data from Excel
+        df = pd.read_excel("data/adjusted_ml_ready_quotes.xlsx")
 
-        if not os.path.exists(file_path):
-            return jsonify({"error": "Sublimits data file not found"}), 500
-
-        try:
-            # Load quote data from Excel
-            df = pd.read_excel(file_path)
-
-            # Load submission data for comparison
-            submission_df, _ = load_data()
-        except Exception as e:
-            print(f"Error reading data files: {str(e)}")
-            return jsonify({"error": "Failed to read data files"}), 500
+        # Load submission data for comparison
+        submission_df = pd.read_csv("data/Submission_ML-Ready_Format.csv")
 
         # Initialize an empty list for sublimits
         sublimits = []
