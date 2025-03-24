@@ -60,6 +60,7 @@ const QuotesSubmissionComparison = () => {
   const [selectedSublimit, setSelectedSublimit] = useState('');
   const [comparisonData, setComparisonData] = useState(null);
   const [loadingComparison, setLoadingComparison] = useState(false);
+  const [loadingSublimits, setLoadingSublimits] = useState(true);
   const [error, setError] = useState(null);
   
   // UI colors
@@ -76,7 +77,7 @@ const QuotesSubmissionComparison = () => {
   // Fetch comparison data when selected sublimit changes
   useEffect(() => {
     console.log('Selected sublimit changed:', selectedSublimit);
-    if (selectedSublimit) {
+    if (selectedSublimit && selectedSublimit !== 'sublimits') {
       fetchComparisonData(selectedSublimit);
     }
   }, [selectedSublimit]);
@@ -85,7 +86,8 @@ const QuotesSubmissionComparison = () => {
   const fetchSublimits = async () => {
     try {
       console.log("Starting sublimits fetch...");
-      setLoadingComparison(true);
+      setLoadingSublimits(true);
+      setError(null);
       
       const response = await apiClient.get('/coverage-sublimits');
       console.log("Raw sublimits response:", response);
@@ -103,7 +105,10 @@ const QuotesSubmissionComparison = () => {
         
         if (sublimitsList.length > 0) {
           console.log("Setting default sublimit to:", sublimitsList[0].id);
-          setSelectedSublimit(sublimitsList[0].id);
+          // Delay setting the selected sublimit to avoid immediate comparison fetch
+          setTimeout(() => {
+            setSelectedSublimit(sublimitsList[0].id);
+          }, 100);
         } else {
           console.warn("Sublimits array is empty");
           toast({
@@ -115,14 +120,7 @@ const QuotesSubmissionComparison = () => {
           });
         }
       } else {
-        console.error('Invalid sublimits format:', response.data);
-        toast({
-          title: 'Error',
-          description: 'Received invalid format for sublimits data',
-          status: 'error',
-          duration: 5000,
-          isClosable: true,
-        });
+        throw new Error('Invalid sublimits format received from server');
       }
     } catch (error) {
       console.error('Error fetching sublimits:', error);
@@ -147,8 +145,9 @@ const QuotesSubmissionComparison = () => {
         isClosable: true,
       });
       setSublimits([]); // Ensure sublimits is at least an empty array
+      setSelectedSublimit(''); // Reset selected sublimit
     } finally {
-      setLoadingComparison(false);
+      setLoadingSublimits(false);
     }
   };
   
@@ -364,21 +363,27 @@ const QuotesSubmissionComparison = () => {
         
         <Box p={5}>
           <Text fontSize="sm" color={subtleTextColor} mb={2}>Choose a sublimit to analyze:</Text>
-          <Select
-            value={selectedSublimit}
-            onChange={(e) => setSelectedSublimit(e.target.value)}
-            placeholder="Select sublimit"
-            isDisabled={sublimits.length === 0}
-            borderColor="gray.300"
-            _hover={{ borderColor: "gray.400" }}
-            _focus={{ borderColor: "#0051A8", boxShadow: "0 0 0 1px #0051A8" }}
-          >
-            {sublimits.map((sublimit) => (
-              <option key={sublimit.id} value={sublimit.id}>
-                {sublimit.name}
-              </option>
-            ))}
-          </Select>
+          {loadingSublimits ? (
+            <Flex justify="center" align="center" py={4}>
+              <Spinner size="md" color="#0051A8" thickness="3px" />
+            </Flex>
+          ) : (
+            <Select
+              value={selectedSublimit}
+              onChange={(e) => setSelectedSublimit(e.target.value)}
+              placeholder="Select sublimit"
+              isDisabled={sublimits.length === 0}
+              borderColor="gray.300"
+              _hover={{ borderColor: "gray.400" }}
+              _focus={{ borderColor: "#0051A8", boxShadow: "0 0 0 1px #0051A8" }}
+            >
+              {sublimits.map((sublimit) => (
+                <option key={sublimit.id} value={sublimit.id}>
+                  {sublimit.name}
+                </option>
+              ))}
+            </Select>
+          )}
         </Box>
       </Box>
       
