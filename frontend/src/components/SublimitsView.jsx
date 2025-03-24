@@ -31,12 +31,14 @@ import {
   useToast,
 } from '@chakra-ui/react';
 import { ArrowBackIcon, ArrowUpDownIcon } from '@chakra-ui/icons';
-import apiClient from '../services/apiClient';
+import { fetchSublimitsForQuote } from '../api';
+import { apiClient } from '../services/apiClient';
 
 const SublimitsView = ({ embedded = false, initialQuoteId = null }) => {
   // Get quoteId from URL params if not embedded
   const { quoteId: urlQuoteId } = useParams();
   const navigate = useNavigate();
+  const toast = useToast();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [sublimitsData, setSublimitsData] = useState(null);
@@ -56,8 +58,6 @@ const SublimitsView = ({ embedded = false, initialQuoteId = null }) => {
   const negativeColorBg = useColorModeValue('red.100', 'red.900');
   const negativeColorText = useColorModeValue('red.600', 'red.200');
   
-  const toast = useToast();
-  
   // Fetch available quotes for filter options
   useEffect(() => {
     const fetchQuotes = async () => {
@@ -66,23 +66,33 @@ const SublimitsView = ({ embedded = false, initialQuoteId = null }) => {
         const response = await apiClient.get('/quotes');
         console.log("Raw quotes response:", response.data);
         
-        if (response.data && Array.isArray(response.data.quotes) && response.data.quotes.length > 0) {
-          console.log("Available quotes from API:", response.data.quotes);
-          setAvailableQuotes(response.data.quotes);
+        if (Array.isArray(response.data)) {
+          const formattedQuotes = response.data.map(quote => ({
+            id: `${quote.Carrier}_${quote.Layer}`,
+            carrier: quote.Carrier,
+            layer: quote.Layer,
+            premium: quote.Premium,
+            capacity: quote.Capacity,
+            creditRating: quote.CreditRating,
+            coverageScore: quote.Coverage_Score
+          }));
+          
+          console.log("Formatted quotes:", formattedQuotes);
+          setAvailableQuotes(formattedQuotes);
           
           // Set initial filter values based on the current quote
-          const currentQuote = response.data.quotes.find(q => q.id === selectedQuoteId);
+          const currentQuote = formattedQuotes.find(q => q.id === selectedQuoteId);
           if (currentQuote) {
             setSelectedCarrier(currentQuote.carrier);
             setSelectedLayer(currentQuote.layer);
           }
           
           // If embedded and no quote selected yet, default to the first one
-          if (embedded && !selectedQuoteId && response.data.quotes.length > 0) {
-            setSelectedQuoteId(response.data.quotes[0].id);
+          if (embedded && !selectedQuoteId && formattedQuotes.length > 0) {
+            setSelectedQuoteId(formattedQuotes[0].id);
           }
         } else {
-          throw new Error('No quotes available or invalid response format');
+          throw new Error('Invalid quotes data format');
         }
       } catch (error) {
         console.error('Error fetching quotes:', error);
@@ -117,7 +127,7 @@ const SublimitsView = ({ embedded = false, initialQuoteId = null }) => {
       setLoading(true);
       setError(null);
       try {
-        const data = await apiClient.get(`/sublimits/${selectedQuoteId}`);
+        const data = await fetchSublimitsForQuote(selectedQuoteId);
         console.log('Sublimits data:', data);
         setSublimitsData(data);
       } catch (err) {

@@ -5,7 +5,7 @@ const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://quote-optimizatio
 console.log('API Base URL:', API_BASE_URL);
 
 // Configure axios defaults
-const apiClient = axios.create({
+export const apiClient = axios.create({
   baseURL: API_BASE_URL,
   timeout: 30000,
   headers: {
@@ -75,6 +75,4 @@ apiClient.interceptors.response.use(
     
     return Promise.reject(error);
   }
-);
-
-export default apiClient; 
+); 

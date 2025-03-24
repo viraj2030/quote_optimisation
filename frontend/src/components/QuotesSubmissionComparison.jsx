@@ -25,7 +25,7 @@ import { fetchQuotesComparisonData } from '../api';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip as ChartTooltip, Legend } from 'chart.js';
 import annotationPlugin from 'chartjs-plugin-annotation';
 import { Bar } from 'react-chartjs-2';
-import apiClient from '../services/apiClient';
+import { apiClient } from '../services/apiClient';
 
 // Register ChartJS components
 ChartJS.register(
@@ -109,7 +109,8 @@ const QuotesSubmissionComparison = () => {
       
       const sublimitsList = response.data.sublimits.map(s => ({
         id: s.id,
-        name: s.name
+        name: s.name,
+        defaultWeight: s.default_weight
       }));
       
       console.log("Parsed sublimits list:", sublimitsList);
@@ -179,7 +180,7 @@ const QuotesSubmissionComparison = () => {
           quoteValue: quote.amount,
           difference: quote.difference,
           percentageDifference: quote.percentage_difference
-        })).sort((a, b) => b.percentageDifference - a.percentageDifference)
+        })).sort((a, b) => Math.abs(b.percentageDifference) - Math.abs(a.percentageDifference))
       };
       
       console.log('Transformed comparison data:', transformedData);
